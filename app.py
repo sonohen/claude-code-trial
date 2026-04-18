@@ -1,7 +1,8 @@
 import sqlite3
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
+from urllib.parse import urlparse
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -404,6 +405,16 @@ def logout():
 
 # ── 設定 ────────────────────────────────────────────────
 
+def _safe_back_url(url):
+    """同一オリジンのURLのみ許可し、それ以外はindexにフォールバックする。"""
+    if not url:
+        return url_for("index")
+    parsed = urlparse(url)
+    if parsed.scheme or parsed.netloc:
+        return url_for("index")
+    return url or url_for("index")
+
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     redir = require_login()
@@ -411,10 +422,11 @@ def settings():
         return redir
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
-    name_error = name_success = pw_error = pw_success = tz_error = tz_success = pp_error = pp_success = None
+    name_error = pw_error = tz_error = pp_error = None
 
     if request.method == "POST":
         action = request.form.get("action")
+        back_url = _safe_back_url(request.form.get("back_url", ""))
 
         if action == "name":
             new_name = request.form.get("display_name", "").strip()
@@ -423,17 +435,11 @@ def settings():
             elif len(new_name) > 50:
                 name_error = "名前は50文字以内で入力してください。"
             else:
-                db.execute(
-                    "UPDATE users SET display_name = ? WHERE user_id = ?",
-                    (new_name, current_user()),
-                )
-                db.execute(
-                    "UPDATE messages SET name = ? WHERE user_id = ?",
-                    (new_name, current_user()),
-                )
+                db.execute("UPDATE users SET display_name = ? WHERE user_id = ?", (new_name, current_user()))
+                db.execute("UPDATE messages SET name = ? WHERE user_id = ?", (new_name, current_user()))
                 db.commit()
-                name_success = "名前を変更しました。"
-                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+                flash("名前を変更しました。", "success")
+                return redirect(back_url)
 
         elif action == "per_page":
             try:
@@ -445,19 +451,18 @@ def settings():
             else:
                 db.execute("UPDATE users SET per_page = ? WHERE user_id = ?", (new_pp, current_user()))
                 db.commit()
-                pp_success = "表示件数を変更しました。"
-                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+                flash("表示件数を変更しました。", "success")
+                return redirect(back_url)
 
         elif action == "timezone":
             new_tz = request.form.get("timezone", "").strip()
-            valid = [tz for tz, _ in TIMEZONES]
-            if new_tz not in valid:
+            if new_tz not in [tz for tz, _ in TIMEZONES]:
                 tz_error = "無効なタイムゾーンです。"
             else:
                 db.execute("UPDATE users SET timezone = ? WHERE user_id = ?", (new_tz, current_user()))
                 db.commit()
-                tz_success = "タイムゾーンを変更しました。"
-                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+                flash("タイムゾーンを変更しました。", "success")
+                return redirect(back_url)
 
         elif action == "password":
             current_pw = request.form.get("current_password", "")
@@ -475,21 +480,23 @@ def settings():
                     (generate_password_hash(new_pw), current_user()),
                 )
                 db.commit()
-                pw_success = "パスワードを変更しました。"
+                flash("パスワードを変更しました。", "success")
+                return redirect(back_url)
 
+        # エラー時: ユーザー情報を再取得して設定画面に留まる
+        user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+
+    back_url = _safe_back_url(request.referrer)
     return render_template(
         "settings.html",
         user=user,
         timezones=TIMEZONES,
         per_page_options=PER_PAGE_OPTIONS,
+        back_url=back_url,
         name_error=name_error,
-        name_success=name_success,
         pw_error=pw_error,
-        pw_success=pw_success,
         tz_error=tz_error,
-        tz_success=tz_success,
         pp_error=pp_error,
-        pp_success=pp_success,
     )
 
 
