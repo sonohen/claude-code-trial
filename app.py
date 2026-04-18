@@ -30,7 +30,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             message TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            user_id TEXT
         )"""
     )
     db.execute(
@@ -40,8 +41,21 @@ def init_db():
             created_at TEXT NOT NULL
         )"""
     )
+    # 既存DBへのマイグレーション
+    cols = [r[1] for r in db.execute("PRAGMA table_info(messages)").fetchall()]
+    if "user_id" not in cols:
+        db.execute("ALTER TABLE messages ADD COLUMN user_id TEXT")
     db.commit()
     db.close()
+
+
+def current_user():
+    return session.get("user_id")
+
+
+def require_login():
+    if not current_user():
+        return redirect(url_for("login"))
 
 
 # ── 掲示板 ──────────────────────────────────────────────
@@ -50,13 +64,16 @@ def init_db():
 def index():
     db = get_db()
     messages = db.execute(
-        "SELECT id, name, message, created_at FROM messages ORDER BY id DESC LIMIT 100"
+        "SELECT id, name, message, created_at, user_id FROM messages ORDER BY id DESC LIMIT 100"
     ).fetchall()
     return render_template("index.html", messages=messages)
 
 
 @app.route("/post", methods=["POST"])
 def post():
+    redir = require_login()
+    if redir:
+        return redir
     name = request.form.get("name", "").strip()
     message = request.form.get("message", "").strip()
     if not name or not message:
@@ -66,8 +83,8 @@ def post():
     db = get_db()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
-        "INSERT INTO messages (name, message, created_at) VALUES (?, ?, ?)",
-        (name, message, now),
+        "INSERT INTO messages (name, message, created_at, user_id) VALUES (?, ?, ?, ?)",
+        (name, message, now, current_user()),
     )
     db.commit()
     return redirect(url_for("index"))
@@ -75,9 +92,12 @@ def post():
 
 @app.route("/edit/<int:message_id>", methods=["GET", "POST"])
 def edit(message_id):
+    redir = require_login()
+    if redir:
+        return redir
     db = get_db()
     row = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
-    if row is None:
+    if row is None or row["user_id"] != current_user():
         return redirect(url_for("index"))
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -94,7 +114,13 @@ def edit(message_id):
 
 @app.route("/delete/<int:message_id>", methods=["POST"])
 def delete(message_id):
+    redir = require_login()
+    if redir:
+        return redir
     db = get_db()
+    row = db.execute("SELECT user_id FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if row is None or row["user_id"] != current_user():
+        return redirect(url_for("index"))
     db.execute("DELETE FROM messages WHERE id = ?", (message_id,))
     db.commit()
     return redirect(url_for("index"))
