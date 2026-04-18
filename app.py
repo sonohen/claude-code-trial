@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-from flask import Flask, g, redirect, render_template, request, session, url_for
+from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -244,6 +244,40 @@ def reply(parent_id):
             return redirect(url_for("index"))
     display_name = get_display_name(db, current_user())
     return render_template("reply.html", parent=parent, display_name=display_name, error=error)
+
+
+@app.route("/api/reply/<int:parent_id>", methods=["POST"])
+def api_reply(parent_id):
+    if not current_user():
+        return jsonify({"error": "ログインが必要です。"}), 401
+    db = get_db()
+    parent = db.execute(
+        "SELECT id FROM messages WHERE id = ? AND parent_id IS NULL", (parent_id,)
+    ).fetchone()
+    if parent is None:
+        return jsonify({"error": "投稿が見つかりません。"}), 404
+    name = request.form.get("name", "").strip()
+    message = request.form.get("message", "").strip()
+    if not name or not message:
+        return jsonify({"error": "名前とメッセージを入力してください。"}), 400
+    if len(name) > 50 or len(message) > 1000:
+        return jsonify({"error": "名前は50文字以内、メッセージは1000文字以内で入力してください。"}), 400
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    cur = db.execute(
+        "INSERT INTO messages (name, message, created_at, user_id, parent_id) VALUES (?, ?, ?, ?, ?)",
+        (name, message, now_utc, current_user(), parent_id),
+    )
+    db.commit()
+    # ユーザーのタイムゾーンで変換した日時を返す
+    user_row = db.execute("SELECT timezone FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+    tz_name = user_row["timezone"] if user_row and user_row["timezone"] else DEFAULT_TZ
+    display_time = localtime_filter(now_utc, tz_name)
+    return jsonify({
+        "id": cur.lastrowid,
+        "name": name,
+        "message": message,
+        "created_at": display_time,
+    }), 201
 
 
 @app.route("/view/<int:message_id>", methods=["GET", "POST"])

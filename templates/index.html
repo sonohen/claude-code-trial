@@ -208,6 +208,82 @@
 
     .btn-reply:hover { background: #e8f0fb; }
 
+    .inline-reply-form {
+      margin-top: 10px;
+      padding: 12px 14px;
+      background: #f7faff;
+      border-radius: 6px;
+      border: 1px solid #d0e0f5;
+    }
+
+    .inline-reply-form .form-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .inline-reply-form input[type="text"] {
+      flex: 0 0 180px;
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+
+    .inline-reply-form textarea {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .inline-reply-form input:focus,
+    .inline-reply-form textarea:focus {
+      outline: none;
+      border-color: #4a6fa5;
+    }
+
+    .inline-reply-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-reply-submit {
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-reply-submit:hover { background: #3a5f95; }
+
+    .btn-reply-cancel {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 0.82rem;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .btn-reply-cancel:hover { color: #555; }
+
+    .inline-reply-error {
+      color: #c0392b;
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+
     .btn-edit, .btn-delete {
       border: none;
       padding: 5px 14px;
@@ -390,8 +466,7 @@
         <div class="message-body">{{ msg.message }}</div>
         {% endif %}
         {% set msg_replies = replies_map.get(msg.id, []) %}
-        {% if msg_replies %}
-        <div class="replies">
+        <div class="replies" id="replies-{{ msg.id }}" {% if not msg_replies %}style="display:none"{% endif %}>
           {% for rep in msg_replies %}
           <div class="reply-card">
             <div class="reply-header">
@@ -402,10 +477,24 @@
           </div>
           {% endfor %}
         </div>
+        {% if session.user_id %}
+        <div class="inline-reply-form" id="reply-form-{{ msg.id }}" style="display:none;">
+          <div class="form-row">
+            <input type="text" placeholder="名前" maxlength="50"
+                   id="reply-name-{{ msg.id }}" value="{{ display_name }}">
+            <textarea placeholder="返信メッセージ" maxlength="1000"
+                      id="reply-msg-{{ msg.id }}"></textarea>
+          </div>
+          <div class="inline-reply-actions">
+            <button class="btn-reply-submit" onclick="submitReply({{ msg.id }})">返信する</button>
+            <button class="btn-reply-cancel" type="button" onclick="toggleReplyForm({{ msg.id }})">キャンセル</button>
+            <span class="inline-reply-error" id="reply-err-{{ msg.id }}"></span>
+          </div>
+        </div>
         {% endif %}
         <div class="message-actions">
           {% if session.user_id %}
-          <a class="btn-reply" href="/reply/{{ msg.id }}">返信</a>
+          <button class="btn-reply" type="button" onclick="toggleReplyForm({{ msg.id }})">返信</button>
           {% endif %}
           {% if session.user_id and session.user_id == msg.user_id %}
           <a href="/edit/{{ msg.id }}"><button class="btn-edit" type="button">編集</button></a>
@@ -448,5 +537,57 @@
   </div>
 </main>
 
+<script>
+function toggleReplyForm(id) {
+  const form = document.getElementById('reply-form-' + id);
+  const isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    document.getElementById('reply-msg-' + id).focus();
+  }
+}
+
+async function submitReply(parentId) {
+  const name = document.getElementById('reply-name-' + parentId).value.trim();
+  const message = document.getElementById('reply-msg-' + parentId).value.trim();
+  const errEl = document.getElementById('reply-err-' + parentId);
+  errEl.textContent = '';
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('message', message);
+
+  const res = await fetch('/api/reply/' + parentId, { method: 'POST', body: fd });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errEl.textContent = data.error || 'エラーが発生しました。';
+    return;
+  }
+
+  // 返信カードをDOMに追加
+  const repliesContainer = document.getElementById('replies-' + parentId);
+  const card = document.createElement('div');
+  card.className = 'reply-card';
+  card.innerHTML =
+    '<div class="reply-header">' +
+      '<span class="reply-name">' + escHtml(data.name) + '</span>' +
+      '<span class="reply-time">' + escHtml(data.created_at) + '</span>' +
+    '</div>' +
+    '<div class="reply-body">' + escHtml(data.message) + '</div>';
+
+  repliesContainer.style.display = 'block';
+  repliesContainer.appendChild(card);
+
+  // フォームをリセット・閉じる
+  document.getElementById('reply-msg-' + parentId).value = '';
+  toggleReplyForm(parentId);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
 </body>
 </html>
