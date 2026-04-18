@@ -128,6 +128,36 @@
       word-break: break-word;
     }
 
+    .message-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    .btn-edit, .btn-delete {
+      border: none;
+      padding: 5px 14px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-edit {
+      background: #e8f0fb;
+      color: #4a6fa5;
+    }
+
+    .btn-edit:hover { background: #d0e0f5; }
+
+    .btn-delete {
+      background: #fdecea;
+      color: #c0392b;
+    }
+
+    .btn-delete:hover { background: #f5c6c2; }
+
     .no-messages {
       text-align: center;
       color: #aaa;
@@ -166,6 +196,12 @@
           <span class="message-time">{{ msg.created_at }}</span>
         </div>
         <div class="message-body">{{ msg.message }}</div>
+        <div class="message-actions">
+          <a href="/edit/{{ msg.id }}"><button class="btn-edit" type="button">編集</button></a>
+          <form action="/delete/{{ msg.id }}" method="post" onsubmit="return confirm('この投稿を削除しますか？')">
+            <button class="btn-delete" type="submit">削除</button>
+          </form>
+        </div>
       </div>
       {% endfor %}
     {% else %}

@@ -39,9 +39,36 @@ def init_db():
 def index():
     db = get_db()
     messages = db.execute(
-        "SELECT name, message, created_at FROM messages ORDER BY id DESC LIMIT 100"
+        "SELECT id, name, message, created_at FROM messages ORDER BY id DESC LIMIT 100"
     ).fetchall()
     return render_template("index.html", messages=messages)
+
+
+@app.route("/edit/<int:message_id>", methods=["GET", "POST"])
+def edit(message_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if row is None:
+        return redirect(url_for("index"))
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        message = request.form.get("message", "").strip()
+        if name and message and len(name) <= 50 and len(message) <= 1000:
+            db.execute(
+                "UPDATE messages SET name = ?, message = ? WHERE id = ?",
+                (name, message, message_id),
+            )
+            db.commit()
+        return redirect(url_for("index"))
+    return render_template("edit.html", msg=row)
+
+
+@app.route("/delete/<int:message_id>", methods=["POST"])
+def delete(message_id):
+    db = get_db()
+    db.execute("DELETE FROM messages WHERE id = ?", (message_id,))
+    db.commit()
+    return redirect(url_for("index"))
 
 
 @app.route("/post", methods=["POST"])
