@@ -160,6 +160,24 @@
     </form>
   </div>
 
+  <div class="card">
+    <h2>タイムゾーンの変更</h2>
+    {% if tz_error %}<div class="alert alert-error">{{ tz_error }}</div>{% endif %}
+    {% if tz_success %}<div class="alert alert-success">{{ tz_success }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="action" value="timezone">
+      <div class="form-group">
+        <label for="timezone">タイムゾーン</label>
+        <select id="timezone" name="timezone" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;font-family:inherit;">
+          {% for tz_value, tz_label in timezones %}
+          <option value="{{ tz_value }}" {% if tz_value == (user.timezone or 'Asia/Tokyo') %}selected{% endif %}>{{ tz_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn-save">タイムゾーンを変更する</button>
+    </form>
+  </div>
+
   <a class="back-link" href="/">← 掲示板に戻る</a>
 </main>
 </body>

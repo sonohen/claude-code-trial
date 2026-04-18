@@ -339,7 +339,7 @@
               {{ msg.name }}
             {% endif %}
           </span>
-          <span class="message-time">{{ msg.created_at }}</span>
+          <span class="message-time">{{ msg.created_at | localtime(user_tz) }}</span>
         </div>
         {% if msg.password_hash and not (session.user_id == msg.user_id or msg.id in unlocked) %}
         <div class="locked-body">
@@ -356,7 +356,7 @@
           <div class="reply-card">
             <div class="reply-header">
               <span class="reply-name">{{ rep.name }}</span>
-              <span class="reply-time">{{ rep.created_at }}</span>
+              <span class="reply-time">{{ rep.created_at | localtime(user_tz) }}</span>
             </div>
             <div class="reply-body">{{ rep.message }}</div>
           </div>

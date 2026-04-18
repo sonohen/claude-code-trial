@@ -113,7 +113,7 @@
     <div class="message-card">
       <div class="message-header">
         <span class="message-name">{{ msg.name }}</span>
-        <span class="message-time">{{ msg.created_at }}</span>
+        <span class="message-time">{{ msg.created_at | localtime(user_tz) }}</span>
       </div>
       {% if msg.password_hash and msg.id not in unlocked %}
       <div style="font-size:0.9rem;color:#999;display:flex;align-items:center;gap:8px;">
