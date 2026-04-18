@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    .post-form {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      margin-bottom: 32px;
+    }
+
+    .post-form h2 {
+      font-size: 1rem;
+      margin-bottom: 16px;
+      color: #4a6fa5;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #4a6fa5;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .btn-submit {
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-submit:hover { background: #3a5f95; }
+
+    .messages h2 {
+      font-size: 1rem;
+      color: #4a6fa5;
+      margin-bottom: 16px;
+    }
+
+    .message-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .message-name {
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: #4a6fa5;
+    }
+
+    .message-time {
+      font-size: 0.78rem;
+      color: #999;
+    }
+
+    .message-body {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .no-messages {
+      text-align: center;
+      color: #aaa;
+      padding: 40px 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>匿名掲示板</header>
+
+<main>
+  <div class="post-form">
+    <h2>投稿する</h2>
+    <form action="/post" method="post">
+      <div class="form-group">
+        <label for="name">名前（最大50文字）</label>
+        <input type="text" id="name" name="name" maxlength="50" placeholder="名無しさん" required>
+      </div>
+      <div class="form-group">
+        <label for="message">メッセージ（最大1000文字）</label>
+        <textarea id="message" name="message" maxlength="1000" placeholder="メッセージを入力してください" required></textarea>
+      </div>
+      <button type="submit" class="btn-submit">投稿する</button>
+    </form>
+  </div>
+
+  <div class="messages">
+    <h2>投稿一覧</h2>
+    {% if messages %}
+      {% for msg in messages %}
+      <div class="message-card">
+        <div class="message-header">
+          <span class="message-name">{{ msg.name }}</span>
+          <span class="message-time">{{ msg.created_at }}</span>
+        </div>
+        <div class="message-body">{{ msg.message }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="no-messages">まだ投稿がありません。最初の投稿をしてみましょう！</p>
+    {% endif %}
+  </div>
+</main>
+
+</body>
+</html>
