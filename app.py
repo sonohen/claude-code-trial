@@ -27,6 +27,8 @@ TIMEZONES = [
 ]
 
 DEFAULT_TZ = "Asia/Tokyo"
+DEFAULT_PER_PAGE = 20
+PER_PAGE_OPTIONS = [10, 20, 50, 100]
 
 
 @app.template_filter("localtime")
@@ -92,6 +94,9 @@ def init_db():
     if "timezone" not in usr_cols:
         db.execute("ALTER TABLE users ADD COLUMN timezone TEXT")
         db.execute("UPDATE users SET timezone = ? WHERE timezone IS NULL", (DEFAULT_TZ,))
+    if "per_page" not in usr_cols:
+        db.execute("ALTER TABLE users ADD COLUMN per_page INTEGER")
+        db.execute("UPDATE users SET per_page = ? WHERE per_page IS NULL", (DEFAULT_PER_PAGE,))
     db.commit()
     db.close()
 
@@ -127,15 +132,37 @@ def is_unlocked(message_id):
 
 # ── 掲示板 ──────────────────────────────────────────────
 
+def get_per_page(db):
+    if current_user():
+        row = db.execute("SELECT per_page FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+        if row and row["per_page"]:
+            return int(row["per_page"])
+    return DEFAULT_PER_PAGE
+
+
 @app.route("/")
 def index():
     db = get_db()
-    # 親投稿のみ取得
+    per_page = get_per_page(db)
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+    offset = (page - 1) * per_page
+
+    total = db.execute(
+        "SELECT COUNT(*) FROM messages WHERE parent_id IS NULL"
+    ).fetchone()[0]
+    total_pages = max(1, -(-total // per_page))  # ceiling division
+    page = min(page, total_pages)
+    offset = (page - 1) * per_page
+
     parents = db.execute(
         "SELECT id, name, message, created_at, user_id, password_hash FROM messages"
-        " WHERE parent_id IS NULL ORDER BY id DESC LIMIT 100"
+        " WHERE parent_id IS NULL ORDER BY id DESC LIMIT ? OFFSET ?",
+        (per_page, offset),
     ).fetchall()
-    # 返信をまとめて取得し parent_id でグループ化
+
     parent_ids = [m["id"] for m in parents]
     replies_map = {}
     if parent_ids:
@@ -147,6 +174,7 @@ def index():
         ).fetchall()
         for r in rows:
             replies_map.setdefault(r["parent_id"], []).append(r)
+
     display_name = get_display_name(db, current_user()) if current_user() else None
     unlocked = session.get("unlocked", [])
     return render_template(
@@ -155,6 +183,9 @@ def index():
         replies_map=replies_map,
         display_name=display_name,
         unlocked=unlocked,
+        page=page,
+        total_pages=total_pages,
+        per_page=per_page,
     )
 
 
@@ -300,9 +331,9 @@ def register():
             else:
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 db.execute(
-                    "INSERT INTO users (user_id, password_hash, display_name, timezone, created_at)"
-                    " VALUES (?, ?, ?, ?, ?)",
-                    (user_id, generate_password_hash(password), user_id, DEFAULT_TZ, now),
+                    "INSERT INTO users (user_id, password_hash, display_name, timezone, per_page, created_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_id, generate_password_hash(password), user_id, DEFAULT_TZ, DEFAULT_PER_PAGE, now),
                 )
                 db.commit()
                 session["user_id"] = user_id
@@ -346,7 +377,7 @@ def settings():
         return redir
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
-    name_error = name_success = pw_error = pw_success = tz_error = tz_success = None
+    name_error = name_success = pw_error = pw_success = tz_error = tz_success = pp_error = pp_success = None
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -368,6 +399,19 @@ def settings():
                 )
                 db.commit()
                 name_success = "名前を変更しました。"
+                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+
+        elif action == "per_page":
+            try:
+                new_pp = int(request.form.get("per_page", DEFAULT_PER_PAGE))
+            except (ValueError, TypeError):
+                new_pp = None
+            if new_pp not in PER_PAGE_OPTIONS:
+                pp_error = "無効な件数です。"
+            else:
+                db.execute("UPDATE users SET per_page = ? WHERE user_id = ?", (new_pp, current_user()))
+                db.commit()
+                pp_success = "表示件数を変更しました。"
                 user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
 
         elif action == "timezone":
@@ -403,12 +447,15 @@ def settings():
         "settings.html",
         user=user,
         timezones=TIMEZONES,
+        per_page_options=PER_PAGE_OPTIONS,
         name_error=name_error,
         name_success=name_success,
         pw_error=pw_error,
         pw_success=pw_success,
         tz_error=tz_error,
         tz_success=tz_success,
+        pp_error=pp_error,
+        pp_success=pp_success,
     )
 
 

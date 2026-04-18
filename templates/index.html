@@ -275,6 +275,46 @@
       margin-top: 3px;
     }
 
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .pagination a, .pagination span {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 5px;
+      font-size: 0.88rem;
+      text-decoration: none;
+    }
+
+    .pagination a {
+      background: #fff;
+      color: #4a6fa5;
+      border: 1px solid #d0e0f5;
+      transition: background 0.2s;
+    }
+
+    .pagination a:hover { background: #e8f0fb; }
+
+    .pagination .current {
+      background: #4a6fa5;
+      color: #fff;
+      border: 1px solid #4a6fa5;
+      font-weight: bold;
+    }
+
+    .pagination .disabled {
+      color: #ccc;
+      border: 1px solid #eee;
+      background: #fafafa;
+      cursor: default;
+    }
+
     .no-messages {
       text-align: center;
       color: #aaa;
@@ -378,6 +418,32 @@
       {% endfor %}
     {% else %}
       <p class="no-messages">まだ投稿がありません。最初の投稿をしてみましょう！</p>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="/?page={{ page - 1 }}">← 前へ</a>
+      {% else %}
+        <span class="disabled">← 前へ</span>
+      {% endif %}
+
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+          <span class="current">{{ p }}</span>
+        {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+          <a href="/?page={{ p }}">{{ p }}</a>
+        {% elif p == page - 3 or p == page + 3 %}
+          <span class="disabled">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page < total_pages %}
+        <a href="/?page={{ page + 1 }}">次へ →</a>
+      {% else %}
+        <span class="disabled">次へ →</span>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
 </main>

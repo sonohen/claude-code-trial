@@ -161,6 +161,24 @@
   </div>
 
   <div class="card">
+    <h2>表示件数の変更</h2>
+    {% if pp_error %}<div class="alert alert-error">{{ pp_error }}</div>{% endif %}
+    {% if pp_success %}<div class="alert alert-success">{{ pp_success }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="action" value="per_page">
+      <div class="form-group">
+        <label for="per_page">1ページあたりの投稿数</label>
+        <select id="per_page" name="per_page" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;font-family:inherit;">
+          {% for n in per_page_options %}
+          <option value="{{ n }}" {% if n == (user.per_page or 20) %}selected{% endif %}>{{ n }} 件</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn-save">表示件数を変更する</button>
+    </form>
+  </div>
+
+  <div class="card">
     <h2>タイムゾーンの変更</h2>
     {% if tz_error %}<div class="alert alert-error">{{ tz_error }}</div>{% endif %}
     {% if tz_success %}<div class="alert alert-success">{{ tz_success }}</div>{% endif %}
