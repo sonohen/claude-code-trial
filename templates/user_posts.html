@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ user.display_name or user.user_id }} の投稿 - 匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header a { color: #fff; text-decoration: none; }
+    .header-nav {
+      font-size: 0.85rem;
+      font-weight: normal;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .header-nav a { opacity: 0.85; }
+    .header-nav a:hover { opacity: 1; text-decoration: underline; }
+    main {
+      max-width: 720px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .page-title {
+      font-size: 1rem;
+      color: #4a6fa5;
+      margin-bottom: 6px;
+    }
+    .post-count {
+      font-size: 0.85rem;
+      color: #999;
+      margin-bottom: 20px;
+    }
+    .message-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .message-name {
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: #4a6fa5;
+    }
+    .message-time {
+      font-size: 0.78rem;
+      color: #999;
+    }
+    .message-body {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .no-messages {
+      text-align: center;
+      color: #aaa;
+      padding: 40px 0;
+      font-size: 0.9rem;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #4a6fa5;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a href="/">匿名掲示板</a>
+  <nav class="header-nav">
+    {% if session.user_id %}
+      <span>{{ session.user_id }} さん</span>
+      <a href="/settings">設定</a>
+      <a href="/logout">ログアウト</a>
+    {% else %}
+      <a href="/login">ログイン</a>
+      <a href="/register">新規会員登録</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+  <h2 class="page-title">{{ user.display_name or user.user_id }} の投稿一覧</h2>
+  <p class="post-count">{{ messages|length }} 件</p>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="message-card">
+      <div class="message-header">
+        <span class="message-name">{{ msg.name }}</span>
+        <span class="message-time">{{ msg.created_at }}</span>
+      </div>
+      <div class="message-body">{{ msg.message }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="no-messages">まだ投稿がありません。</p>
+  {% endif %}
+
+  <a class="back-link" href="/">← 掲示板に戻る</a>
+</main>
+</body>
+</html>
