@@ -260,6 +260,19 @@ def settings():
     )
 
 
+@app.route("/user/<user_id>")
+def user_posts(user_id):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    if user is None:
+        return redirect(url_for("index"))
+    messages = db.execute(
+        "SELECT id, name, message, created_at FROM messages WHERE user_id = ? ORDER BY id DESC",
+        (user_id,),
+    ).fetchall()
+    return render_template("user_posts.html", user=user, messages=messages)
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
