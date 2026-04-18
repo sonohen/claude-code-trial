@@ -31,7 +31,8 @@ def init_db():
             name TEXT NOT NULL,
             message TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            user_id TEXT
+            user_id TEXT,
+            password_hash TEXT
         )"""
     )
     db.execute(
@@ -45,6 +46,8 @@ def init_db():
     msg_cols = [r[1] for r in db.execute("PRAGMA table_info(messages)").fetchall()]
     if "user_id" not in msg_cols:
         db.execute("ALTER TABLE messages ADD COLUMN user_id TEXT")
+    if "password_hash" not in msg_cols:
+        db.execute("ALTER TABLE messages ADD COLUMN password_hash TEXT")
     usr_cols = [r[1] for r in db.execute("PRAGMA table_info(users)").fetchall()]
     if "display_name" not in usr_cols:
         db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
@@ -67,16 +70,21 @@ def require_login():
         return redirect(url_for("login"))
 
 
+def is_unlocked(message_id):
+    return message_id in session.get("unlocked", [])
+
+
 # ── 掲示板 ──────────────────────────────────────────────
 
 @app.route("/")
 def index():
     db = get_db()
     messages = db.execute(
-        "SELECT id, name, message, created_at, user_id FROM messages ORDER BY id DESC LIMIT 100"
+        "SELECT id, name, message, created_at, user_id, password_hash FROM messages ORDER BY id DESC LIMIT 100"
     ).fetchall()
     display_name = get_display_name(db, current_user()) if current_user() else None
-    return render_template("index.html", messages=messages, display_name=display_name)
+    unlocked = session.get("unlocked", [])
+    return render_template("index.html", messages=messages, display_name=display_name, unlocked=unlocked)
 
 
 @app.route("/post", methods=["POST"])
@@ -86,18 +94,41 @@ def post():
         return redir
     name = request.form.get("name", "").strip()
     message = request.form.get("message", "").strip()
+    post_password = request.form.get("post_password", "").strip()
     if not name or not message:
         return redirect(url_for("index"))
     if len(name) > 50 or len(message) > 1000:
         return redirect(url_for("index"))
+    pw_hash = generate_password_hash(post_password) if post_password else None
     db = get_db()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
-        "INSERT INTO messages (name, message, created_at, user_id) VALUES (?, ?, ?, ?)",
-        (name, message, now, current_user()),
+        "INSERT INTO messages (name, message, created_at, user_id, password_hash) VALUES (?, ?, ?, ?, ?)",
+        (name, message, now, current_user(), pw_hash),
     )
     db.commit()
     return redirect(url_for("index"))
+
+
+@app.route("/view/<int:message_id>", methods=["GET", "POST"])
+def view(message_id):
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None:
+        return redirect(url_for("index"))
+    # 投稿者本人またはすでにアンロック済みなら即表示
+    if msg["user_id"] == current_user() or is_unlocked(message_id):
+        return render_template("view.html", msg=msg, unlocked=True, error=None)
+    error = None
+    if request.method == "POST":
+        entered = request.form.get("password", "")
+        if check_password_hash(msg["password_hash"], entered):
+            unlocked = session.get("unlocked", [])
+            unlocked.append(message_id)
+            session["unlocked"] = unlocked
+            return redirect(url_for("view", message_id=message_id))
+        error = "パスワードが正しくありません。"
+    return render_template("view.html", msg=msg, unlocked=False, error=error)
 
 
 @app.route("/edit/<int:message_id>", methods=["GET", "POST"])
@@ -196,6 +227,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
+    session.pop("unlocked", None)
     return redirect(url_for("index"))
 
 
@@ -267,10 +299,11 @@ def user_posts(user_id):
     if user is None:
         return redirect(url_for("index"))
     messages = db.execute(
-        "SELECT id, name, message, created_at FROM messages WHERE user_id = ? ORDER BY id DESC",
+        "SELECT id, name, message, created_at, password_hash FROM messages WHERE user_id = ? ORDER BY id DESC",
         (user_id,),
     ).fetchall()
-    return render_template("user_posts.html", user=user, messages=messages)
+    unlocked = session.get("unlocked", [])
+    return render_template("user_posts.html", user=user, messages=messages, unlocked=unlocked)
 
 
 if __name__ == "__main__":
