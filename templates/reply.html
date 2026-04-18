@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>返信する - 匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+    header a { color: #fff; text-decoration: none; }
+    main {
+      max-width: 680px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .parent-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      border-left: 4px solid #4a6fa5;
+    }
+    .parent-label {
+      font-size: 0.78rem;
+      color: #4a6fa5;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .parent-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .parent-name { font-weight: bold; font-size: 0.9rem; color: #4a6fa5; }
+    .parent-time { font-size: 0.75rem; color: #bbb; }
+    .parent-body {
+      font-size: 0.9rem;
+      color: #555;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .reply-form {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .reply-form h2 { font-size: 1rem; color: #4a6fa5; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #555;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus { outline: none; border-color: #4a6fa5; }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    .alert-error {
+      background: #fdecea; color: #c0392b;
+      border-radius: 6px; padding: 10px 14px;
+      font-size: 0.88rem; margin-bottom: 14px;
+    }
+    .form-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-submit {
+      background: #4a6fa5; color: #fff; border: none;
+      padding: 10px 28px; border-radius: 6px;
+      font-size: 0.95rem; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover { background: #3a5f95; }
+    .btn-cancel {
+      color: #777; font-size: 0.88rem; text-decoration: none;
+    }
+    .btn-cancel:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<header><a href="/">匿名掲示板</a></header>
+<main>
+  <div class="parent-card">
+    <div class="parent-label">返信先の投稿</div>
+    <div class="parent-header">
+      <span class="parent-name">{{ parent.name }}</span>
+      <span class="parent-time">{{ parent.created_at }}</span>
+    </div>
+    <div class="parent-body">{{ parent.message }}</div>
+  </div>
+
+  <div class="reply-form">
+    <h2>返信する</h2>
+    {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+    <form method="post">
+      <div class="form-group">
+        <label for="name">名前（最大50文字）</label>
+        <input type="text" id="name" name="name" maxlength="50" value="{{ display_name }}" required>
+      </div>
+      <div class="form-group">
+        <label for="message">返信メッセージ（最大1000文字）</label>
+        <textarea id="message" name="message" maxlength="1000" placeholder="返信内容を入力してください" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">返信する</button>
+        <a class="btn-cancel" href="/">キャンセル</a>
+      </div>
+    </form>
+  </div>
+</main>
+</body>
+</html>

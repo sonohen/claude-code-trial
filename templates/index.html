@@ -163,6 +163,51 @@
       justify-content: flex-end;
     }
 
+    .replies {
+      margin-top: 10px;
+      border-left: 3px solid #e0e8f5;
+      padding-left: 14px;
+    }
+
+    .reply-card {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .reply-card:last-child { border-bottom: none; }
+
+    .reply-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .reply-name { font-weight: bold; font-size: 0.85rem; color: #4a6fa5; }
+    .reply-time { font-size: 0.75rem; color: #bbb; }
+    .reply-body {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #444;
+    }
+
+    .btn-reply {
+      background: none;
+      border: 1px solid #c8d8ee;
+      color: #4a6fa5;
+      padding: 4px 12px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+      display: inline-block;
+    }
+
+    .btn-reply:hover { background: #e8f0fb; }
+
     .btn-edit, .btn-delete {
       border: none;
       padding: 5px 14px;
@@ -304,14 +349,31 @@
         {% else %}
         <div class="message-body">{{ msg.message }}</div>
         {% endif %}
-        {% if session.user_id and session.user_id == msg.user_id %}
+        {% set msg_replies = replies_map.get(msg.id, []) %}
+        {% if msg_replies %}
+        <div class="replies">
+          {% for rep in msg_replies %}
+          <div class="reply-card">
+            <div class="reply-header">
+              <span class="reply-name">{{ rep.name }}</span>
+              <span class="reply-time">{{ rep.created_at }}</span>
+            </div>
+            <div class="reply-body">{{ rep.message }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
         <div class="message-actions">
+          {% if session.user_id %}
+          <a class="btn-reply" href="/reply/{{ msg.id }}">返信</a>
+          {% endif %}
+          {% if session.user_id and session.user_id == msg.user_id %}
           <a href="/edit/{{ msg.id }}"><button class="btn-edit" type="button">編集</button></a>
           <form action="/delete/{{ msg.id }}" method="post" onsubmit="return confirm('この投稿を削除しますか？')">
             <button class="btn-delete" type="submit">削除</button>
           </form>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
       {% endfor %}
     {% else %}
