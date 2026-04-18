@@ -224,6 +224,10 @@ def settings():
                     "UPDATE users SET display_name = ? WHERE user_id = ?",
                     (new_name, current_user()),
                 )
+                db.execute(
+                    "UPDATE messages SET name = ? WHERE user_id = ?",
+                    (new_name, current_user()),
+                )
                 db.commit()
                 name_success = "名前を変更しました。"
                 user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
