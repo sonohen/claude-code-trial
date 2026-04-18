@@ -48,6 +48,8 @@ def init_db():
         db.execute("ALTER TABLE messages ADD COLUMN user_id TEXT")
     if "password_hash" not in msg_cols:
         db.execute("ALTER TABLE messages ADD COLUMN password_hash TEXT")
+    if "parent_id" not in msg_cols:
+        db.execute("ALTER TABLE messages ADD COLUMN parent_id INTEGER")
     usr_cols = [r[1] for r in db.execute("PRAGMA table_info(users)").fetchall()]
     if "display_name" not in usr_cols:
         db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
@@ -79,12 +81,32 @@ def is_unlocked(message_id):
 @app.route("/")
 def index():
     db = get_db()
-    messages = db.execute(
-        "SELECT id, name, message, created_at, user_id, password_hash FROM messages ORDER BY id DESC LIMIT 100"
+    # 親投稿のみ取得
+    parents = db.execute(
+        "SELECT id, name, message, created_at, user_id, password_hash FROM messages"
+        " WHERE parent_id IS NULL ORDER BY id DESC LIMIT 100"
     ).fetchall()
+    # 返信をまとめて取得し parent_id でグループ化
+    parent_ids = [m["id"] for m in parents]
+    replies_map = {}
+    if parent_ids:
+        placeholders = ",".join("?" * len(parent_ids))
+        rows = db.execute(
+            f"SELECT id, name, message, created_at, user_id, parent_id FROM messages"
+            f" WHERE parent_id IN ({placeholders}) ORDER BY id ASC",
+            parent_ids,
+        ).fetchall()
+        for r in rows:
+            replies_map.setdefault(r["parent_id"], []).append(r)
     display_name = get_display_name(db, current_user()) if current_user() else None
     unlocked = session.get("unlocked", [])
-    return render_template("index.html", messages=messages, display_name=display_name, unlocked=unlocked)
+    return render_template(
+        "index.html",
+        messages=parents,
+        replies_map=replies_map,
+        display_name=display_name,
+        unlocked=unlocked,
+    )
 
 
 @app.route("/post", methods=["POST"])
@@ -103,11 +125,45 @@ def post():
     db = get_db()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
-        "INSERT INTO messages (name, message, created_at, user_id, password_hash) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO messages (name, message, created_at, user_id, password_hash, parent_id)"
+        " VALUES (?, ?, ?, ?, ?, NULL)",
         (name, message, now, current_user(), pw_hash),
     )
     db.commit()
     return redirect(url_for("index"))
+
+
+@app.route("/reply/<int:parent_id>", methods=["GET", "POST"])
+def reply(parent_id):
+    redir = require_login()
+    if redir:
+        return redir
+    db = get_db()
+    parent = db.execute(
+        "SELECT id, name, message, created_at, user_id FROM messages WHERE id = ? AND parent_id IS NULL",
+        (parent_id,),
+    ).fetchone()
+    if parent is None:
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        message = request.form.get("message", "").strip()
+        if not name or not message:
+            error = "名前とメッセージを入力してください。"
+        elif len(name) > 50 or len(message) > 1000:
+            error = "名前は50文字以内、メッセージは1000文字以内で入力してください。"
+        else:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            db.execute(
+                "INSERT INTO messages (name, message, created_at, user_id, parent_id)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (name, message, now, current_user(), parent_id),
+            )
+            db.commit()
+            return redirect(url_for("index"))
+    display_name = get_display_name(db, current_user())
+    return render_template("reply.html", parent=parent, display_name=display_name, error=error)
 
 
 @app.route("/view/<int:message_id>", methods=["GET", "POST"])
