@@ -209,7 +209,8 @@
   <span>匿名掲示板</span>
   <nav class="header-nav">
     {% if session.user_id %}
-      <span class="username">{{ session.user_id }} さん</span>
+      <span class="username">{{ display_name }} さん</span>
+      <a href="/settings">設定</a>
       <a href="/logout">ログアウト</a>
     {% else %}
       <a href="/login">ログイン</a>
@@ -225,7 +226,7 @@
     <form action="/post" method="post">
       <div class="form-group">
         <label for="name">名前（最大50文字）</label>
-        <input type="text" id="name" name="name" maxlength="50" placeholder="名無しさん" value="{{ session.user_id }}" required>
+        <input type="text" id="name" name="name" maxlength="50" placeholder="名無しさん" value="{{ display_name }}" required>
       </div>
       <div class="form-group">
         <label for="message">メッセージ（最大1000文字）</label>

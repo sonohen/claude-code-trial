@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アカウント設定 - 匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header a { color: #fff; text-decoration: none; }
+    .header-nav {
+      font-size: 0.85rem;
+      font-weight: normal;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .header-nav a { opacity: 0.85; }
+    .header-nav a:hover { opacity: 1; text-decoration: underline; }
+    main {
+      max-width: 520px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      font-size: 1.1rem;
+      color: #4a6fa5;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      color: #4a6fa5;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #555;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #4a6fa5;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 3px;
+    }
+    .alert {
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+    }
+    .alert-error { background: #fdecea; color: #c0392b; }
+    .alert-success { background: #eafaf1; color: #1e8449; }
+    .btn-save {
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-save:hover { background: #3a5f95; }
+    .back-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #4a6fa5;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a href="/">匿名掲示板</a>
+  <nav class="header-nav">
+    <span>{{ user.display_name or user.user_id }} さん</span>
+    <a href="/logout">ログアウト</a>
+  </nav>
+</header>
+<main>
+  <h1>アカウント設定</h1>
+
+  <div class="card">
+    <h2>名前の変更</h2>
+    {% if name_error %}<div class="alert alert-error">{{ name_error }}</div>{% endif %}
+    {% if name_success %}<div class="alert alert-success">{{ name_success }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="action" value="name">
+      <div class="form-group">
+        <label for="display_name">表示名（最大50文字）</label>
+        <input type="text" id="display_name" name="display_name"
+               value="{{ user.display_name or user.user_id }}" maxlength="50" required>
+        <p class="hint">ログインIDは変更できません（現在のID: {{ user.user_id }}）</p>
+      </div>
+      <button type="submit" class="btn-save">名前を変更する</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>パスワードの変更</h2>
+    {% if pw_error %}<div class="alert alert-error">{{ pw_error }}</div>{% endif %}
+    {% if pw_success %}<div class="alert alert-success">{{ pw_success }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="action" value="password">
+      <div class="form-group">
+        <label for="current_password">現在のパスワード</label>
+        <input type="password" id="current_password" name="current_password" required>
+      </div>
+      <div class="form-group">
+        <label for="new_password">新しいパスワード（6文字以上）</label>
+        <input type="password" id="new_password" name="new_password" required>
+      </div>
+      <div class="form-group">
+        <label for="confirm_password">新しいパスワード（確認）</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+      </div>
+      <button type="submit" class="btn-save">パスワードを変更する</button>
+    </form>
+  </div>
+
+  <a class="back-link" href="/">← 掲示板に戻る</a>
+</main>
+</body>
+</html>
