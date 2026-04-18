@@ -1,11 +1,46 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from flask import Flask, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = "change-me-in-production"
 DATABASE = "board.db"
+
+TIMEZONES = [
+    ("UTC",                 "UTC"),
+    ("Asia/Tokyo",          "Asia/Tokyo (UTC+9)"),
+    ("Asia/Seoul",          "Asia/Seoul (UTC+9)"),
+    ("Asia/Shanghai",       "Asia/Shanghai (UTC+8)"),
+    ("Asia/Singapore",      "Asia/Singapore (UTC+8)"),
+    ("Asia/Kolkata",        "Asia/Kolkata (UTC+5:30)"),
+    ("Asia/Dubai",          "Asia/Dubai (UTC+4)"),
+    ("Europe/London",       "Europe/London"),
+    ("Europe/Paris",        "Europe/Paris (UTC+1/2)"),
+    ("Europe/Berlin",       "Europe/Berlin (UTC+1/2)"),
+    ("America/New_York",    "America/New_York (UTC-5/-4)"),
+    ("America/Chicago",     "America/Chicago (UTC-6/-5)"),
+    ("America/Denver",      "America/Denver (UTC-7/-6)"),
+    ("America/Los_Angeles", "America/Los_Angeles (UTC-8/-7)"),
+    ("Australia/Sydney",    "Australia/Sydney"),
+]
+
+DEFAULT_TZ = "Asia/Tokyo"
+
+
+@app.template_filter("localtime")
+def localtime_filter(dt_str, tz_name):
+    """UTC文字列をユーザーのタイムゾーンへ変換して返す。"""
+    if not dt_str or not tz_name:
+        return dt_str
+    try:
+        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        return dt.astimezone(ZoneInfo(tz_name)).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return dt_str
+
+
 
 
 def get_db():
@@ -54,6 +89,9 @@ def init_db():
     if "display_name" not in usr_cols:
         db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
         db.execute("UPDATE users SET display_name = user_id WHERE display_name IS NULL")
+    if "timezone" not in usr_cols:
+        db.execute("ALTER TABLE users ADD COLUMN timezone TEXT")
+        db.execute("UPDATE users SET timezone = ? WHERE timezone IS NULL", (DEFAULT_TZ,))
     db.commit()
     db.close()
 
@@ -70,6 +108,17 @@ def get_display_name(db, user_id):
 def require_login():
     if not current_user():
         return redirect(url_for("login"))
+
+
+@app.context_processor
+def inject_user_tz():
+    tz = DEFAULT_TZ
+    if current_user():
+        db = get_db()
+        row = db.execute("SELECT timezone FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+        if row and row["timezone"]:
+            tz = row["timezone"]
+    return {"user_tz": tz}
 
 
 def is_unlocked(message_id):
@@ -123,7 +172,7 @@ def post():
         return redirect(url_for("index"))
     pw_hash = generate_password_hash(post_password) if post_password else None
     db = get_db()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
         "INSERT INTO messages (name, message, created_at, user_id, password_hash, parent_id)"
         " VALUES (?, ?, ?, ?, ?, NULL)",
@@ -154,7 +203,7 @@ def reply(parent_id):
         elif len(name) > 50 or len(message) > 1000:
             error = "名前は50文字以内、メッセージは1000文字以内で入力してください。"
         else:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             db.execute(
                 "INSERT INTO messages (name, message, created_at, user_id, parent_id)"
                 " VALUES (?, ?, ?, ?, ?)",
@@ -249,10 +298,11 @@ def register():
             if exists:
                 error = "そのIDはすでに使われています。"
             else:
-                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 db.execute(
-                    "INSERT INTO users (user_id, password_hash, display_name, created_at) VALUES (?, ?, ?, ?)",
-                    (user_id, generate_password_hash(password), user_id, now),
+                    "INSERT INTO users (user_id, password_hash, display_name, timezone, created_at)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (user_id, generate_password_hash(password), user_id, DEFAULT_TZ, now),
                 )
                 db.commit()
                 session["user_id"] = user_id
@@ -296,7 +346,7 @@ def settings():
         return redir
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
-    name_error = name_success = pw_error = pw_success = None
+    name_error = name_success = pw_error = pw_success = tz_error = tz_success = None
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -320,6 +370,17 @@ def settings():
                 name_success = "名前を変更しました。"
                 user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
 
+        elif action == "timezone":
+            new_tz = request.form.get("timezone", "").strip()
+            valid = [tz for tz, _ in TIMEZONES]
+            if new_tz not in valid:
+                tz_error = "無効なタイムゾーンです。"
+            else:
+                db.execute("UPDATE users SET timezone = ? WHERE user_id = ?", (new_tz, current_user()))
+                db.commit()
+                tz_success = "タイムゾーンを変更しました。"
+                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+
         elif action == "password":
             current_pw = request.form.get("current_password", "")
             new_pw = request.form.get("new_password", "")
@@ -341,10 +402,13 @@ def settings():
     return render_template(
         "settings.html",
         user=user,
+        timezones=TIMEZONES,
         name_error=name_error,
         name_success=name_success,
         pw_error=pw_error,
         pw_success=pw_success,
+        tz_error=tz_error,
+        tz_success=tz_success,
     )
 
 

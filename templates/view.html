@@ -107,7 +107,7 @@
     {% if unlocked %}
       <div class="message-header">
         <span class="message-name">{{ msg.name }}</span>
-        <span class="message-time">{{ msg.created_at }}</span>
+        <span class="message-time">{{ msg.created_at | localtime(user_tz) }}</span>
       </div>
       <div class="message-body">{{ msg.message }}</div>
     {% else %}

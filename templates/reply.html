@@ -108,7 +108,7 @@
     <div class="parent-label">返信先の投稿</div>
     <div class="parent-header">
       <span class="parent-name">{{ parent.name }}</span>
-      <span class="parent-time">{{ parent.created_at }}</span>
+      <span class="parent-time">{{ parent.created_at | localtime(user_tz) }}</span>
     </div>
     <div class="parent-body">{{ parent.message }}</div>
   </div>
