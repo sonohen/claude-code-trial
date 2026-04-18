@@ -1,8 +1,10 @@
 import sqlite3
 from datetime import datetime
-from flask import Flask, g, redirect, render_template, request, url_for
+from flask import Flask, g, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
+app.secret_key = "change-me-in-production"
 DATABASE = "board.db"
 
 
@@ -31,9 +33,18 @@ def init_db():
             created_at TEXT NOT NULL
         )"""
     )
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )"""
+    )
     db.commit()
     db.close()
 
+
+# ── 掲示板 ──────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -42,6 +53,24 @@ def index():
         "SELECT id, name, message, created_at FROM messages ORDER BY id DESC LIMIT 100"
     ).fetchall()
     return render_template("index.html", messages=messages)
+
+
+@app.route("/post", methods=["POST"])
+def post():
+    name = request.form.get("name", "").strip()
+    message = request.form.get("message", "").strip()
+    if not name or not message:
+        return redirect(url_for("index"))
+    if len(name) > 50 or len(message) > 1000:
+        return redirect(url_for("index"))
+    db = get_db()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "INSERT INTO messages (name, message, created_at) VALUES (?, ?, ?)",
+        (name, message, now),
+    )
+    db.commit()
+    return redirect(url_for("index"))
 
 
 @app.route("/edit/<int:message_id>", methods=["GET", "POST"])
@@ -71,21 +100,66 @@ def delete(message_id):
     return redirect(url_for("index"))
 
 
-@app.route("/post", methods=["POST"])
-def post():
-    name = request.form.get("name", "").strip()
-    message = request.form.get("message", "").strip()
-    if not name or not message:
-        return redirect(url_for("index"))
-    if len(name) > 50 or len(message) > 1000:
-        return redirect(url_for("index"))
-    db = get_db()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    db.execute(
-        "INSERT INTO messages (name, message, created_at) VALUES (?, ?, ?)",
-        (name, message, now),
-    )
-    db.commit()
+# ── 認証 ────────────────────────────────────────────────
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    error = None
+    if request.method == "POST":
+        user_id = request.form.get("user_id", "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+
+        if not user_id or not password:
+            error = "IDとパスワードを入力してください。"
+        elif len(user_id) > 50:
+            error = "IDは50文字以内で入力してください。"
+        elif len(password) < 6:
+            error = "パスワードは6文字以上で入力してください。"
+        elif password != confirm:
+            error = "パスワードが一致しません。"
+        else:
+            db = get_db()
+            exists = db.execute(
+                "SELECT 1 FROM users WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            if exists:
+                error = "そのIDはすでに使われています。"
+            else:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                db.execute(
+                    "INSERT INTO users (user_id, password_hash, created_at) VALUES (?, ?, ?)",
+                    (user_id, generate_password_hash(password), now),
+                )
+                db.commit()
+                session["user_id"] = user_id
+                return redirect(url_for("index"))
+
+    return render_template("register.html", error=error)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        user_id = request.form.get("user_id", "").strip()
+        password = request.form.get("password", "")
+        db = get_db()
+        user = db.execute(
+            "SELECT * FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if user is None or not check_password_hash(user["password_hash"], password):
+            error = "IDまたはパスワードが正しくありません。"
+        else:
+            session["user_id"] = user_id
+            return redirect(url_for("index"))
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
     return redirect(url_for("index"))
 
 
