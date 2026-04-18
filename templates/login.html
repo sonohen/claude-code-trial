@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - 匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+    header a { color: #fff; text-decoration: none; }
+    main {
+      max-width: 420px;
+      margin: 48px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: #4a6fa5;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #555;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #4a6fa5;
+    }
+    .error {
+      background: #fdecea;
+      color: #c0392b;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      margin-bottom: 16px;
+    }
+    .btn-primary {
+      width: 100%;
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 11px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+    .btn-primary:hover { background: #3a5f95; }
+    .footer-link {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.85rem;
+      color: #777;
+    }
+    .footer-link a { color: #4a6fa5; }
+  </style>
+</head>
+<body>
+<header><a href="/">匿名掲示板</a></header>
+<main>
+  <div class="card">
+    <h2>ログイン</h2>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+      <div class="form-group">
+        <label for="user_id">ID</label>
+        <input type="text" id="user_id" name="user_id" maxlength="50" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">パスワード</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn-primary">ログイン</button>
+    </form>
+    <p class="footer-link">アカウントをお持ちでない方は <a href="/register">新規会員登録</a></p>
+  </div>
+</main>
+</body>
+</html>
