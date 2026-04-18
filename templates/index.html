@@ -202,6 +202,34 @@
       font-weight: bold;
     }
 
+    .locked-body {
+      font-size: 0.9rem;
+      color: #999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-view {
+      display: inline-block;
+      background: #f5f5f5;
+      color: #555;
+      border: 1px solid #ddd;
+      padding: 4px 12px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .btn-view:hover { background: #e8e8e8; }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-top: 3px;
+    }
+
     .no-messages {
       text-align: center;
       color: #aaa;
@@ -239,6 +267,11 @@
         <label for="message">メッセージ（最大1000文字）</label>
         <textarea id="message" name="message" maxlength="1000" placeholder="メッセージを入力してください" required></textarea>
       </div>
+      <div class="form-group">
+        <label for="post_password">閲覧パスワード（任意）</label>
+        <input type="password" id="post_password" name="post_password" placeholder="設定しない場合は空白のまま">
+        <p class="hint">設定すると、パスワードを知っている人だけが内容を閲覧できます。</p>
+      </div>
       <button type="submit" class="btn-submit">投稿する</button>
     </form>
   </div>
@@ -263,7 +296,14 @@
           </span>
           <span class="message-time">{{ msg.created_at }}</span>
         </div>
+        {% if msg.password_hash and not (session.user_id == msg.user_id or msg.id in unlocked) %}
+        <div class="locked-body">
+          🔒 パスワードで保護された投稿です
+          <a class="btn-view" href="/view/{{ msg.id }}">閲覧する</a>
+        </div>
+        {% else %}
         <div class="message-body">{{ msg.message }}</div>
+        {% endif %}
         {% if session.user_id and session.user_id == msg.user_id %}
         <div class="message-actions">
           <a href="/edit/{{ msg.id }}"><button class="btn-edit" type="button">編集</button></a>

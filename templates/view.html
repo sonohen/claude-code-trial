@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投稿を閲覧 - 匿名掲示板</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    header {
+      background: #4a6fa5;
+      color: #fff;
+      padding: 16px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+    header a { color: #fff; text-decoration: none; }
+    main {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .message-name {
+      font-weight: bold;
+      font-size: 1rem;
+      color: #4a6fa5;
+    }
+    .message-time { font-size: 0.8rem; color: #999; }
+    .message-body {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 20px;
+    }
+    .lock-section h2 {
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 16px;
+    }
+    .lock-icon { font-size: 2rem; text-align: center; margin-bottom: 12px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #555;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .form-group input:focus { outline: none; border-color: #4a6fa5; }
+    .alert-error {
+      background: #fdecea;
+      color: #c0392b;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+    }
+    .btn-primary {
+      background: #4a6fa5;
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #3a5f95; }
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: #4a6fa5;
+    }
+  </style>
+</head>
+<body>
+<header><a href="/">匿名掲示板</a></header>
+<main>
+  <div class="card">
+    {% if unlocked %}
+      <div class="message-header">
+        <span class="message-name">{{ msg.name }}</span>
+        <span class="message-time">{{ msg.created_at }}</span>
+      </div>
+      <div class="message-body">{{ msg.message }}</div>
+    {% else %}
+      <div class="lock-section">
+        <div class="lock-icon">🔒</div>
+        <h2>この投稿はパスワードで保護されています</h2>
+        {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+        <form method="post">
+          <div class="form-group">
+            <label for="password">パスワード</label>
+            <input type="password" id="password" name="password" autofocus required>
+          </div>
+          <button type="submit" class="btn-primary">閲覧する</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+  <a class="back-link" href="/">← 掲示板に戻る</a>
+</main>
+</body>
+</html>
