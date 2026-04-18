@@ -125,9 +125,9 @@
   <div class="card">
     <h2>名前の変更</h2>
     {% if name_error %}<div class="alert alert-error">{{ name_error }}</div>{% endif %}
-    {% if name_success %}<div class="alert alert-success">{{ name_success }}</div>{% endif %}
     <form method="post">
       <input type="hidden" name="action" value="name">
+      <input type="hidden" name="back_url" value="{{ back_url }}">
       <div class="form-group">
         <label for="display_name">表示名（最大50文字）</label>
         <input type="text" id="display_name" name="display_name"
@@ -141,9 +141,9 @@
   <div class="card">
     <h2>パスワードの変更</h2>
     {% if pw_error %}<div class="alert alert-error">{{ pw_error }}</div>{% endif %}
-    {% if pw_success %}<div class="alert alert-success">{{ pw_success }}</div>{% endif %}
     <form method="post">
       <input type="hidden" name="action" value="password">
+      <input type="hidden" name="back_url" value="{{ back_url }}">
       <div class="form-group">
         <label for="current_password">現在のパスワード</label>
         <input type="password" id="current_password" name="current_password" required>
@@ -163,9 +163,9 @@
   <div class="card">
     <h2>表示件数の変更</h2>
     {% if pp_error %}<div class="alert alert-error">{{ pp_error }}</div>{% endif %}
-    {% if pp_success %}<div class="alert alert-success">{{ pp_success }}</div>{% endif %}
     <form method="post">
       <input type="hidden" name="action" value="per_page">
+      <input type="hidden" name="back_url" value="{{ back_url }}">
       <div class="form-group">
         <label for="per_page">1ページあたりの投稿数</label>
         <select id="per_page" name="per_page" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;font-family:inherit;">
@@ -181,9 +181,9 @@
   <div class="card">
     <h2>タイムゾーンの変更</h2>
     {% if tz_error %}<div class="alert alert-error">{{ tz_error }}</div>{% endif %}
-    {% if tz_success %}<div class="alert alert-success">{{ tz_success }}</div>{% endif %}
     <form method="post">
       <input type="hidden" name="action" value="timezone">
+      <input type="hidden" name="back_url" value="{{ back_url }}">
       <div class="form-group">
         <label for="timezone">タイムゾーン</label>
         <select id="timezone" name="timezone" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;font-family:inherit;">
@@ -196,7 +196,7 @@
     </form>
   </div>
 
-  <a class="back-link" href="/">← 掲示板に戻る</a>
+  <a class="back-link" href="{{ back_url }}">← 戻る</a>
 </main>
 </body>
 </html>
