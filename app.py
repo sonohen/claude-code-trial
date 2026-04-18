@@ -41,16 +41,25 @@ def init_db():
             created_at TEXT NOT NULL
         )"""
     )
-    # 既存DBへのマイグレーション
-    cols = [r[1] for r in db.execute("PRAGMA table_info(messages)").fetchall()]
-    if "user_id" not in cols:
+    # マイグレーション
+    msg_cols = [r[1] for r in db.execute("PRAGMA table_info(messages)").fetchall()]
+    if "user_id" not in msg_cols:
         db.execute("ALTER TABLE messages ADD COLUMN user_id TEXT")
+    usr_cols = [r[1] for r in db.execute("PRAGMA table_info(users)").fetchall()]
+    if "display_name" not in usr_cols:
+        db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
+        db.execute("UPDATE users SET display_name = user_id WHERE display_name IS NULL")
     db.commit()
     db.close()
 
 
 def current_user():
     return session.get("user_id")
+
+
+def get_display_name(db, user_id):
+    row = db.execute("SELECT display_name FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    return row["display_name"] if row and row["display_name"] else user_id
 
 
 def require_login():
@@ -66,7 +75,8 @@ def index():
     messages = db.execute(
         "SELECT id, name, message, created_at, user_id FROM messages ORDER BY id DESC LIMIT 100"
     ).fetchall()
-    return render_template("index.html", messages=messages)
+    display_name = get_display_name(db, current_user()) if current_user() else None
+    return render_template("index.html", messages=messages, display_name=display_name)
 
 
 @app.route("/post", methods=["POST"])
@@ -154,8 +164,8 @@ def register():
             else:
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 db.execute(
-                    "INSERT INTO users (user_id, password_hash, created_at) VALUES (?, ?, ?)",
-                    (user_id, generate_password_hash(password), now),
+                    "INSERT INTO users (user_id, password_hash, display_name, created_at) VALUES (?, ?, ?, ?)",
+                    (user_id, generate_password_hash(password), user_id, now),
                 )
                 db.commit()
                 session["user_id"] = user_id
@@ -187,6 +197,63 @@ def login():
 def logout():
     session.pop("user_id", None)
     return redirect(url_for("index"))
+
+
+# ── 設定 ────────────────────────────────────────────────
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    redir = require_login()
+    if redir:
+        return redir
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+    name_error = name_success = pw_error = pw_success = None
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "name":
+            new_name = request.form.get("display_name", "").strip()
+            if not new_name:
+                name_error = "名前を入力してください。"
+            elif len(new_name) > 50:
+                name_error = "名前は50文字以内で入力してください。"
+            else:
+                db.execute(
+                    "UPDATE users SET display_name = ? WHERE user_id = ?",
+                    (new_name, current_user()),
+                )
+                db.commit()
+                name_success = "名前を変更しました。"
+                user = db.execute("SELECT * FROM users WHERE user_id = ?", (current_user(),)).fetchone()
+
+        elif action == "password":
+            current_pw = request.form.get("current_password", "")
+            new_pw = request.form.get("new_password", "")
+            confirm_pw = request.form.get("confirm_password", "")
+            if not check_password_hash(user["password_hash"], current_pw):
+                pw_error = "現在のパスワードが正しくありません。"
+            elif len(new_pw) < 6:
+                pw_error = "新しいパスワードは6文字以上で入力してください。"
+            elif new_pw != confirm_pw:
+                pw_error = "新しいパスワードが一致しません。"
+            else:
+                db.execute(
+                    "UPDATE users SET password_hash = ? WHERE user_id = ?",
+                    (generate_password_hash(new_pw), current_user()),
+                )
+                db.commit()
+                pw_success = "パスワードを変更しました。"
+
+    return render_template(
+        "settings.html",
+        user=user,
+        name_error=name_error,
+        name_success=name_success,
+        pw_error=pw_error,
+        pw_success=pw_success,
+    )
 
 
 if __name__ == "__main__":
